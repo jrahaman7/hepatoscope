@@ -384,11 +384,11 @@ export function buildAlphaGenomeLink(i: AtlasLinkInput): string {
 
 export async function ensemblVcf(hgvsOrRsid: string): Promise<string[]> {
   const j = await cachedJson<Record<string, { vcf_string?: string[] }>[]>(
-    `https://rest.ensembl.org/variant_recoder/human/${enc(hgvsOrRsid)}?fields=vcf_string&content-type=application/json`, {}, { source: 'Ensembl' });
+    `https://rest.ensembl.org/variant_recoder/human/${enc(hgvsOrRsid)}?vcf_string=1&content-type=application/json`, {}, { source: 'Ensembl' });
   const out = new Set<string>();
   j.forEach((entry) => Object.values(entry).forEach((v) => v?.vcf_string?.forEach((s) => {
-    const [c, pos, ref, alt] = s.split('-');
-    if (c && pos && ref && alt) out.add(`chr${c}:${pos}:${ref}>${alt}`);
+    const m = s.match(/^([0-9]{1,2}|X|Y|MT)-(\d+)-([ACGTN]+)-([ACGTN]+)$/); // primary-assembly chromosomes only (skip LRG_* coordinates)
+    if (m) out.add(`chr${m[1] === 'MT' ? 'M' : m[1]}:${m[2]}:${m[3]}>${m[4]}`);
   })));
   return [...out];
 }

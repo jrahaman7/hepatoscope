@@ -72,7 +72,7 @@ export const GENE_PRESETS: GeneProfile[] = [
   {
     symbol: 'VEGFA', name: 'Vascular endothelial growth factor A', ensemblId: 'ENSG00000112715', uniprot: 'P15692', pdbId: '2VPF',
     chemblTarget: 'CHEMBL1783', locus: 'chr6:43770209-43786487',
-    hotspot: { label: 'rs699947 (−2578C>A)', kind: 'regulatory', residue: null, hgvs: 'rs699947', vcf: 'chr6:43768652:C>A',
+    hotspot: { label: 'rs699947 (−2578C>A)', kind: 'regulatory', residue: null, hgvs: 'rs699947', vcf: 'chr6:43768652:A>C',
       note: 'Promoter polymorphism linked to VEGF expression; 6p21 VEGFA amplification marks sorafenib-responsive HCC.' },
     tfs: ['HIF1A', 'EPAS1', 'SP1'], source: 'preset',
   },
@@ -86,7 +86,7 @@ export const GENE_PRESETS: GeneProfile[] = [
   {
     symbol: 'ARID1A', name: 'AT-rich interaction domain 1A', ensemblId: 'ENSG00000117713', uniprot: 'O14497', pdbId: null,
     chemblTarget: null, locus: 'chr1:26693236-26782104',
-    hotspot: { label: 'R1989*', kind: 'truncating', residue: 1989, hgvs: 'NM_006015.6:c.5965C>T', vcf: null,
+    hotspot: { label: 'R1989*', kind: 'truncating', residue: 1989, hgvs: 'NM_006015.6:c.5965C>T', vcf: 'chr1:26779863:C>T',
       note: 'Recurrent truncating SWI/SNF mutation; ARID1A loss is frequent in HCC and iCCA.' },
     tfs: ['SP1', 'MYC', 'YY1'], source: 'preset',
   },
