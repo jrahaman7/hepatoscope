@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import * as d3 from 'd3';
 import type { GeneProfile, Subtype } from '../data/presets';
-import { alphaFold, otTarget, otTargetDiseaseAssociation, OT_AXES, rcsbEntry, rcsbSearchByUniprot, uniprot, type OtAxis, type UniFeature } from '../services/scienceApi';
+import { alphaFold, otResolveDisease, otTarget, otTargetDiseaseAssociation, OT_AXES, rcsbEntry, rcsbSearchByUniprot, uniprot, type OtAxis, type UniFeature } from '../services/scienceApi';
 import { useAsync } from '../hooks/useAsync';
 import { Badge, Card, Empty, ErrorBox, Ext, Loading, SectionHeader, Segmented, Stat, fmt } from '../components/ui';
 import { MolViewer, PLDDT_BANDS, type RenderStyle, type StructSource } from '../components/MolViewer';
@@ -98,7 +98,10 @@ export function S1Structure({ gene, subtype }: { gene: GeneProfile; subtype: Sub
   const up = useAsync(() => uniprot(gene.uniprot), [gene.uniprot]);
   const pdbId = useAsync(async () => gene.pdbId ?? (await rcsbSearchByUniprot(gene.uniprot, 1))[0] ?? null, [gene.uniprot, gene.pdbId]);
   const pdb = useAsync(() => rcsbEntry(pdbId.data!), [pdbId.data], !!pdbId.data);
-  const assoc = useAsync(() => otTargetDiseaseAssociation(subtype.efoId, gene.ensemblId), [subtype.efoId, gene.ensemblId]);
+  const assoc = useAsync(async () => {
+    const dz = await otResolveDisease([subtype.otId, subtype.efoId], subtype.label);
+    return otTargetDiseaseAssociation(dz.id, gene.ensemblId);
+  }, [subtype.otId, gene.ensemblId]);
   const tgt = useAsync(() => otTarget(gene.ensemblId), [gene.ensemblId]);
 
   const tract = useMemo(() => {
@@ -131,10 +134,10 @@ export function S1Structure({ gene, subtype }: { gene: GeneProfile; subtype: Sub
         </Card>
 
         <div className="flex flex-col gap-4 lg:col-span-2">
-          <Card title="Open Targets association" subtitle={assoc.data?.disease ? `${gene.symbol} ↔ ${assoc.data.disease.name} (${subtype.efoId})` : subtype.efoId}
+          <Card title="Open Targets association" subtitle={assoc.data?.disease ? `${gene.symbol} ↔ ${assoc.data.disease.name} (${assoc.data.disease.id})` : subtype.otId}
             right={assoc.data?.overall != null ? <Badge tone="brand">overall {assoc.data.overall.toFixed(3)}</Badge> : undefined}>
             {assoc.loading ? <Loading /> : assoc.error ? <ErrorBox error={assoc.error} onRetry={assoc.reload} /> : assoc.data && (
-              assoc.data.disease == null ? <Empty>Disease {subtype.efoId} not found in Open Targets.</Empty>
+              assoc.data.disease == null ? <Empty>{subtype.label} not found in Open Targets.</Empty>
                 : assoc.data.overall == null ? <Empty>No direct association scored for {gene.symbol} in {assoc.data.disease.name}.</Empty>
                   : <RadarPlot axes={assoc.data.axes} />)}
           </Card>

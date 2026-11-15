@@ -1,6 +1,6 @@
 import { useState, type FormEvent } from 'react';
 import { DRUG_PRESETS, GENE_PRESETS, SUBTYPES, type DrugPreset, type GeneProfile, type Subtype } from './data/presets';
-import { otDiseaseTopTargets, resolveGene } from './services/scienceApi';
+import { otDiseaseTopTargets, otResolveDisease, resolveGene } from './services/scienceApi';
 import { useAsync } from './hooks/useAsync';
 import { Badge, Ext } from './components/ui';
 import { S1Structure } from './sections/S1Structure';
@@ -18,7 +18,10 @@ export default function App() {
   const [query, setQuery] = useState('');
   const [resolving, setResolving] = useState(false);
   const [resolveErr, setResolveErr] = useState<string | null>(null);
-  const topTargets = useAsync(() => otDiseaseTopTargets(subtype.efoId, 12), [subtype.efoId]);
+  const topTargets = useAsync(async () => {
+    const dz = await otResolveDisease([subtype.otId, subtype.efoId], subtype.label);
+    return { ...(await otDiseaseTopTargets(dz.id, 12)), id: dz.id };
+  }, [subtype.otId]);
 
   const pickSymbol = async (sym: string) => {
     const preset = GENE_PRESETS.find((g) => g.symbol === sym.toUpperCase());
@@ -44,9 +47,9 @@ export default function App() {
             </div>
             <div className="inline-flex rounded-lg bg-slate-100 p-0.5">
               {SUBTYPES.map((s) => (
-                <button key={s.key} onClick={() => setSubtype(s)} title={`${s.label} · ${s.efoId}`}
+                <button key={s.key} onClick={() => setSubtype(s)} title={`${s.label} · Open Targets ${s.otId} · spec ${s.efoId}`}
                   className={`rounded-md px-3 py-1 text-xs font-medium ${subtype.key === s.key ? 'bg-white text-ink shadow-sm' : 'text-slate-500 hover:text-ink'}`}>
-                  {s.key}<span className="ml-1 hidden font-mono text-[10px] text-slate-400 xl:inline">{s.efoId}</span>
+                  {s.key}<span className="ml-1 hidden font-mono text-[10px] text-slate-400 xl:inline">{s.otId}</span>
                 </button>
               ))}
             </div>
@@ -86,7 +89,7 @@ export default function App() {
               {gene.locus && <Badge>{gene.locus}</Badge>}
               {gene.hotspot && <Badge tone="red">{gene.hotspot.label}</Badge>}
             </div>
-            <p className="mt-2 text-xs text-slate-500">Context: <b>{subtype.label}</b> ({subtype.efoId}) · active drug <b>{drug.name}</b></p>
+            <p className="mt-2 text-xs text-slate-500">Context: <b>{subtype.label}</b> ({topTargets.data?.id ?? subtype.otId}) · active drug <b>{drug.name}</b></p>
           </div>
           <div>
             <div className="mb-1 text-[11px] text-slate-500">

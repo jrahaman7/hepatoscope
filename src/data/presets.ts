@@ -8,15 +8,16 @@ export type SubtypeKey = 'HCC' | 'iCCA' | 'HB';
 export interface Subtype {
   key: SubtypeKey;
   label: string;
-  efoId: string;
+  efoId: string; // identifier from the original spec (legacy EFO)
+  otId: string; // identifier Open Targets currently uses (MONDO); re-resolved by name at runtime if it ever changes
   ctCondition: string; // ClinicalTrials.gov condition string
   epmcTerm: string; // Europe PMC query term
 }
 
 export const SUBTYPES: Subtype[] = [
-  { key: 'HCC', label: 'Hepatocellular Carcinoma', efoId: 'EFO_0000182', ctCondition: 'Hepatocellular Carcinoma', epmcTerm: '"hepatocellular carcinoma"' },
-  { key: 'iCCA', label: 'Intrahepatic Cholangiocarcinoma', efoId: 'EFO_0005221', ctCondition: 'Intrahepatic Cholangiocarcinoma', epmcTerm: '"intrahepatic cholangiocarcinoma"' },
-  { key: 'HB', label: 'Hepatoblastoma', efoId: 'EFO_0000526', ctCondition: 'Hepatoblastoma', epmcTerm: 'hepatoblastoma' },
+  { key: 'HCC', label: 'Hepatocellular Carcinoma', efoId: 'EFO_0000182', otId: 'MONDO_0007256', ctCondition: 'Hepatocellular Carcinoma', epmcTerm: '"hepatocellular carcinoma"' },
+  { key: 'iCCA', label: 'Intrahepatic Cholangiocarcinoma', efoId: 'EFO_0005221', otId: 'MONDO_0003210', ctCondition: 'Intrahepatic Cholangiocarcinoma', epmcTerm: '"intrahepatic cholangiocarcinoma"' },
+  { key: 'HB', label: 'Hepatoblastoma', efoId: 'EFO_0000526', otId: 'MONDO_0018666', ctCondition: 'Hepatoblastoma', epmcTerm: 'hepatoblastoma' },
 ];
 
 export interface Hotspot {

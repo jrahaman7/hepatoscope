@@ -31,16 +31,7 @@ export function S3Pharma({ gene, drug, onDrug }: { gene: GeneProfile; drug: Drug
 
   const dl = props.data ? drugLikeness(props.data) : null;
   const maxAe = Math.max(1, ...(faers.data ?? []).map((a) => a.count));
-  const candidates = (() => {
-    const rows = ot.data?.knownDrugs ?? [];
-    const best = new Map<string, (typeof rows)[number] & { diseases: Set<string> }>();
-    rows.forEach((r) => {
-      const cur = best.get(r.drugId);
-      if (!cur) best.set(r.drugId, { ...r, diseases: new Set([r.disease]) });
-      else { cur.diseases.add(r.disease); if (r.phase > cur.phase) Object.assign(cur, { phase: r.phase, status: r.status }); }
-    });
-    return [...best.values()].sort((a, b) => b.phase - a.phase).slice(0, 14);
-  })();
+  const candidates = (ot.data?.knownDrugs ?? []).slice(0, 20);
 
   return (
     <section id="s03" className="scroll-mt-28">
@@ -129,7 +120,7 @@ export function S3Pharma({ gene, drug, onDrug }: { gene: GeneProfile; drug: Drug
             )}
         </Card>
 
-        <Card title="Open Targets clinical candidates" subtitle={`Drugs acting on ${gene.symbol}, by max phase`}>
+        <Card title="Open Targets clinical candidates" subtitle={ot.data ? `${ot.data.knownDrugs.length} drugs acting on ${gene.symbol}, by max clinical stage` : `Drugs acting on ${gene.symbol}`}>
           {ot.loading ? <Loading /> : ot.error ? <ErrorBox error={ot.error} onRetry={ot.reload} />
             : ot.data?.knownDrugsError && !candidates.length ? <ErrorBox error={`Known-drugs field unavailable: ${ot.data.knownDrugsError}`} />
               : !candidates.length ? <Empty>No clinical-stage drugs recorded for {gene.symbol}.</Empty> : (
@@ -138,9 +129,9 @@ export function S3Pharma({ gene, drug, onDrug }: { gene: GeneProfile; drug: Drug
                     <li key={c.drugId} className="rounded-md border border-slate-100 px-2 py-1.5 text-xs">
                       <div className="flex items-center justify-between gap-2">
                         <Ext href={`https://platform.opentargets.org/drug/${c.drugId}`}>{c.drugName}</Ext>
-                        <Badge tone={c.phase >= 4 ? 'green' : c.phase >= 3 ? 'brand' : 'slate'}>Phase {c.phase}</Badge>
+                        <Badge tone={c.rank >= 5 ? 'green' : c.rank >= 3 ? 'brand' : c.rank < 0 ? 'red' : 'slate'}>{c.stage}</Badge>
                       </div>
-                      <div className="mt-0.5 truncate text-[11px] text-slate-500" title={[...c.diseases].join('; ')}>{c.moa} · {[...c.diseases].slice(0, 2).join('; ')}</div>
+                      <div className="mt-0.5 truncate text-[11px] text-slate-500" title={`${c.moa}\n${c.diseases.join('; ')}`}>{c.drugType} · {c.moa || 'mechanism n/a'} · {c.diseases.slice(0, 2).join('; ')}</div>
                     </li>
                   ))}
                 </ul>

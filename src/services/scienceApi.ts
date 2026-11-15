@@ -86,6 +86,19 @@ async function otQuery<T>(query: string, variables: Record<string, unknown>): Pr
   return json.data as T;
 }
 
+/** Resolve a disease to the ID Open Targets currently uses: try the given IDs in order, then search by name. */
+export async function otResolveDisease(ids: string[], name: string): Promise<{ id: string; name: string }> {
+  for (const id of ids) {
+    const d = await otQuery<{ disease: { id: string; name: string } | null }>('query($e:String!){ disease(efoId:$e){ id name } }', { e: id }).catch(() => null);
+    if (d?.disease) return d.disease;
+  }
+  const s = await otQuery<{ search: { hits: { id: string; name: string }[] } }>(
+    'query($q:String!){ search(queryString:$q, entityNames:["disease"], page:{index:0,size:5}){ hits{ id name } } }', { q: name });
+  const hit = s.search.hits.find((h) => h.name.toLowerCase() === name.toLowerCase()) ?? s.search.hits[0];
+  if (!hit) throw new ApiError('Open Targets', `disease "${name}" not found`);
+  return hit;
+}
+
 export const OT_AXES = [
   'somatic_mutation', 'known_drug', 'affected_pathway', 'literature', 'rna_expression', 'animal_model', 'genetic_association',
 ] as const;
@@ -121,7 +134,7 @@ export async function otDiseaseTopTargets(efoId: string, size = 10): Promise<{ n
 }
 
 export interface OtTractability { label: string; modality: string; value: boolean }
-export interface OtKnownDrug { drugId: string; drugName: string; phase: number; status: string | null; moa: string; disease: string; drugType: string }
+export interface OtKnownDrug { drugId: string; drugName: string; rank: number; stage: string; moa: string; diseases: string[]; drugType: string }
 export interface OtTarget {
   id: string; symbol: string; name: string;
   location: { chromosome: string; start: number; end: number; strand: number } | null;
@@ -130,34 +143,61 @@ export interface OtTarget {
   knownDrugsError?: string;
 }
 
+// Open Targets clinical stage → sortable rank + display label
+const STAGE: Record<string, [number, string]> = {
+  APPROVAL: [5, 'Approved'], PHASE_4: [4, 'Phase 4'], PHASE_3: [3, 'Phase 3'], PHASE_2_3: [2.5, 'Phase 2/3'], PHASE_2: [2, 'Phase 2'],
+  PHASE_1_2: [1.5, 'Phase 1/2'], PHASE_1: [1, 'Phase 1'], EARLY_PHASE_1: [0.5, 'Early Phase 1'], PHASE_0: [0.2, 'Phase 0'], WITHDRAWAL: [-1, 'Withdrawn'],
+};
+const stageOf = (s: string | null | undefined): [number, string] => (s && STAGE[s]) || [0, s ? s.replace(/_/g, ' ').toLowerCase() : 'preclinical'];
+
 export async function otTarget(ensemblId: string): Promise<OtTarget> {
   const base = `id approvedSymbol approvedName genomicLocation{ chromosome start end strand } tractability{ label modality value }`;
-  const q1 = `query($id:String!){ target(ensemblId:$id){ ${base}
-    knownDrugs(size:60){ rows{ drugId prefName phase status mechanismOfAction drugType disease{ name } } } } }`;
-  type Raw = {
-    target: {
-      id: string; approvedSymbol: string; approvedName: string;
-      genomicLocation: OtTarget['location']; tractability: OtTractability[];
-      knownDrugs?: { rows: { drugId: string; prefName: string; phase: number; status: string | null; mechanismOfAction: string; drugType: string; disease: { name: string } }[] };
-    } | null;
-  };
-  let d: Raw;
+  type Core = { id: string; approvedSymbol: string; approvedName: string; genomicLocation: OtTarget['location']; tractability: OtTractability[] };
+  // Current schema (2025+): drugAndClinicalCandidates
+  const qNew = `query($id:String!){ target(ensemblId:$id){ ${base}
+    drugAndClinicalCandidates{ rows{ maxClinicalStage drug{ id name drugType mechanismsOfAction{ rows{ mechanismOfAction } } } diseases{ diseaseFromSource disease{ name } } } } } }`;
+  // Legacy schema: knownDrugs
+  const qOld = `query($id:String!){ target(ensemblId:$id){ ${base}
+    knownDrugs(size:60){ rows{ drugId prefName phase mechanismOfAction drugType disease{ name } } } } }`;
+  type NewRaw = { target: (Core & { drugAndClinicalCandidates: { rows: { maxClinicalStage: string; drug: { id: string; name: string; drugType: string; mechanismsOfAction?: { rows: { mechanismOfAction: string }[] } }; diseases: { diseaseFromSource: string; disease: { name: string } | null }[] }[] } }) | null };
+  type OldRaw = { target: (Core & { knownDrugs: { rows: { drugId: string; prefName: string; phase: number; mechanismOfAction: string; drugType: string; disease: { name: string } }[] } }) | null };
+
+  let core: Core | null = null;
+  let knownDrugs: OtKnownDrug[] = [];
   let knownDrugsError: string | undefined;
   try {
-    d = await otQuery<Raw>(q1, { id: ensemblId });
-  } catch (e) {
-    // Schema drift guard: fall back to the core fields so the rest of the workbench still renders.
-    knownDrugsError = e instanceof Error ? e.message : String(e);
-    d = await otQuery<Raw>(`query($id:String!){ target(ensemblId:$id){ ${base} } }`, { id: ensemblId });
+    const d = await otQuery<NewRaw>(qNew, { id: ensemblId });
+    core = d.target;
+    knownDrugs = (d.target?.drugAndClinicalCandidates.rows ?? []).map((r) => {
+      const [rank, stage] = stageOf(r.maxClinicalStage);
+      return {
+        drugId: r.drug.id, drugName: r.drug.name, rank, stage, drugType: r.drug.drugType,
+        moa: [...new Set(r.drug.mechanismsOfAction?.rows.map((m) => m.mechanismOfAction) ?? [])].join('; '),
+        diseases: [...new Set(r.diseases.map((x) => x.disease?.name ?? x.diseaseFromSource).filter(Boolean))],
+      };
+    });
+  } catch (eNew) {
+    try {
+      const d = await otQuery<OldRaw>(qOld, { id: ensemblId });
+      core = d.target;
+      const byDrug = new Map<string, OtKnownDrug>();
+      (d.target?.knownDrugs.rows ?? []).forEach((r) => {
+        const cur = byDrug.get(r.drugId);
+        const rank = r.phase >= 4 ? 5 : r.phase;
+        if (!cur) byDrug.set(r.drugId, { drugId: r.drugId, drugName: r.prefName, rank, stage: rank === 5 ? 'Approved' : `Phase ${r.phase}`, moa: r.mechanismOfAction, drugType: r.drugType, diseases: [r.disease?.name].filter(Boolean) as string[] });
+        else { if (r.disease?.name && !cur.diseases.includes(r.disease.name)) cur.diseases.push(r.disease.name); if (rank > cur.rank) Object.assign(cur, { rank, stage: rank === 5 ? 'Approved' : `Phase ${r.phase}` }); }
+      });
+      knownDrugs = [...byDrug.values()];
+    } catch {
+      // Schema drift guard: keep the rest of the workbench working.
+      knownDrugsError = eNew instanceof Error ? eNew.message : String(eNew);
+      core = (await otQuery<{ target: Core | null }>(`query($id:String!){ target(ensemblId:$id){ ${base} } }`, { id: ensemblId })).target;
+    }
   }
-  if (!d.target) throw new ApiError('Open Targets', `target ${ensemblId} not found`);
-  const t = d.target;
+  if (!core) throw new ApiError('Open Targets', `target ${ensemblId} not found`);
   return {
-    id: t.id, symbol: t.approvedSymbol, name: t.approvedName, location: t.genomicLocation, tractability: t.tractability ?? [],
-    knownDrugs: (t.knownDrugs?.rows ?? []).map((r) => ({
-      drugId: r.drugId, drugName: r.prefName, phase: r.phase, status: r.status, moa: r.mechanismOfAction, disease: r.disease?.name ?? '', drugType: r.drugType,
-    })),
-    knownDrugsError,
+    id: core.id, symbol: core.approvedSymbol, name: core.approvedName, location: core.genomicLocation, tractability: core.tractability ?? [],
+    knownDrugs: knownDrugs.sort((a, b) => b.rank - a.rank), knownDrugsError,
   };
 }
 
