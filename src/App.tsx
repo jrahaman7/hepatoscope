@@ -37,6 +37,7 @@ export default function App() {
   const [gene, setGene] = useState<GeneProfile>(GENE_PRESETS[0]);
   const [drug, setDrug] = useState<DrugPreset>(DRUG_PRESETS[0]);
   const [active, setActive] = useState('');
+  const [geneStatus, setGeneStatus] = useState<{ loading?: string; error?: string }>({});
 
   const setMode = (m: Mode) => {
     setModeState(m);
@@ -66,7 +67,13 @@ export default function App() {
   const openUseCase = (u: UseCase) => {
     setSubtypeKey(u.subtype);
     const g = GENE_PRESETS.find((p) => p.symbol === u.gene);
-    if (g) setGene(g); else void resolveGene(u.gene).then(setGene).catch(() => undefined);
+    if (g) { setGene(g); setGeneStatus({}); }
+    else {
+      setGeneStatus({ loading: u.gene });
+      void resolveGene(u.gene)
+        .then((r) => { setGene(r); setGeneStatus({}); })
+        .catch((e: unknown) => setGeneStatus({ error: `Could not load ${u.gene}: ${e instanceof Error ? e.message : String(e)}` }));
+    }
     const d = DRUG_PRESETS.find((p) => p.name === u.drug);
     if (d) setDrug(d);
     setTimeout(() => document.getElementById('workbench')?.scrollIntoView({ behavior: 'smooth' }), 80);
@@ -79,7 +86,7 @@ export default function App() {
       ) : (
         <div className="space-y-14">
           <ClinicianHub subtype={subtypeKey} onSubtype={setSubtypeKey} onUseCase={openUseCase} />
-          <Workbench subtypeKey={subtypeKey} gene={gene} setGene={setGene} drug={drug} setDrug={setDrug} />
+          <Workbench subtypeKey={subtypeKey} gene={gene} setGene={(g) => { setGene(g); setGeneStatus({}); }} drug={drug} setDrug={setDrug} status={geneStatus} />
         </div>
       )}
       <footer className="mt-16 border-t border-rule pt-5 text-[12.5px] leading-relaxed text-ink-soft">
@@ -90,7 +97,7 @@ export default function App() {
   );
 }
 
-function Workbench({ subtypeKey, gene, setGene, drug, setDrug }: { subtypeKey: SubtypeKey; gene: GeneProfile; setGene: (g: GeneProfile) => void; drug: DrugPreset; setDrug: (d: DrugPreset) => void }) {
+function Workbench({ subtypeKey, gene, setGene, drug, setDrug, status }: { subtypeKey: SubtypeKey; gene: GeneProfile; setGene: (g: GeneProfile) => void; drug: DrugPreset; setDrug: (d: DrugPreset) => void; status: { loading?: string; error?: string } }) {
   const subtype = SUBTYPES.find((s) => s.key === subtypeKey)!;
   const [query, setQuery] = useState('');
   const [resolving, setResolving] = useState(false);
@@ -129,6 +136,8 @@ function Workbench({ subtypeKey, gene, setGene, drug, setDrug }: { subtypeKey: S
             </form>
           </div>
           {resolveErr && <p className="mt-1 text-[12px] text-rose-600">{resolveErr}</p>}
+          {(status.loading || resolving) && <p className="mt-1 flex items-center gap-2 text-[12.5px] text-brand-600"><span className="h-3 w-3 animate-spin rounded-full border-2 border-brand-500 border-t-transparent" />Resolving {status.loading ?? query.toUpperCase()} from Open Targets, UniProt, RCSB and ChEMBL… (first lookup can take ~15 s)</p>}
+          {status.error && <p className="mt-1 text-[12px] text-rose-600">{status.error}</p>}
         </div>
         <div className="mt-4 grid gap-4 rounded-xl border border-rule bg-paper p-4 lg:grid-cols-[1fr_1.2fr]">
           <div>
