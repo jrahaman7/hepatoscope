@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react';
+import { useEffect, useRef, type ReactNode } from 'react';
 
 export type Mode = 'patient' | 'clinician';
 
@@ -8,9 +8,13 @@ export interface NavGroup { label: string; items: { id: string; label: string }[
 export function Shell({ mode, onMode, groups, active, children, topBar }: {
   mode: Mode; onMode: (m: Mode) => void; groups: NavGroup[]; active: string; children: ReactNode; topBar?: ReactNode;
 }) {
+  const chips = useRef<HTMLElement>(null);
+  useEffect(() => {
+    chips.current?.querySelector<HTMLElement>(`[data-id="${active}"]`)?.scrollIntoView({ inline: 'center', block: 'nearest' });
+  }, [active]);
   return (
     <div className="min-h-screen bg-paper-tint">
-      <aside className="fixed inset-y-0 left-0 z-40 hidden w-[264px] flex-col border-r border-rule bg-paper lg:flex">
+      <aside className="fixed inset-y-0 left-0 z-40 hidden w-[264px] flex-col border-r border-rule bg-paper min-[960px]:flex">
         <div className="flex items-center gap-3 px-5 pb-4 pt-6">
           <Monogram />
           <div>
@@ -37,15 +41,23 @@ export function Shell({ mode, onMode, groups, active, children, topBar }: {
         </p>
       </aside>
 
-      {/* Mobile top bar */}
-      <header className="sticky top-0 z-40 flex items-center justify-between gap-3 border-b border-rule bg-paper/95 px-4 py-2.5 backdrop-blur lg:hidden">
-        <div className="flex items-center gap-2"><Monogram small /><span className="serif text-lg">HepatoScope</span></div>
-        <ModeSwitch mode={mode} onMode={onMode} compact />
+      {/* Small-screen top bar with mode switch and section chips */}
+      <header className="sticky top-0 z-40 border-b border-rule bg-paper/95 backdrop-blur min-[960px]:hidden">
+        <div className="flex items-center justify-between gap-3 px-4 py-2.5">
+          <a href="#top" className="flex items-center gap-2"><Monogram small /><span className="serif text-lg">HepatoScope</span></a>
+          <ModeSwitch mode={mode} onMode={onMode} compact />
+        </div>
+        <nav ref={chips} aria-label="Sections" className="flex gap-1.5 overflow-x-auto px-4 pb-2.5 [scrollbar-width:none]">
+          {groups.flatMap((g) => g.items).map((it) => (
+            <a key={it.id} href={`#${it.id}`} data-id={it.id} aria-current={active === it.id ? 'location' : undefined}
+              className={`flex min-h-[36px] shrink-0 items-center rounded-full border px-3 text-[13.5px] ${active === it.id ? 'border-brand-500 bg-lavender-wash font-semibold text-brand-600' : 'border-rule text-ink-soft'}`}>{it.label}</a>
+          ))}
+        </nav>
       </header>
 
-      <div className="lg:pl-[264px]">
+      <div id="top" className="min-[960px]:pl-[264px]">
         {topBar}
-        <main className="mx-auto max-w-[1180px] px-5 pb-16 pt-6 lg:px-10">{children}</main>
+        <main className="mx-auto max-w-[1180px] px-4 pb-16 pt-6 sm:px-6 lg:px-10">{children}</main>
       </div>
       <Ornament />
     </div>
@@ -58,10 +70,10 @@ export function ModeSwitch({ mode, onMode, compact }: { mode: Mode; onMode: (m: 
     { v: 'clinician', label: 'Clinicians', hint: 'Evidence & live workbench' },
   ];
   return (
-    <div role="radiogroup" aria-label="Choose your view" className={`grid grid-cols-2 gap-1 rounded-[9px] bg-lavender-wash p-1 ${compact ? 'w-56' : ''}`}>
+    <div role="radiogroup" aria-label="Choose your view" className={`grid grid-cols-2 gap-1 rounded-[9px] bg-lavender-wash p-1 ${compact ? 'w-52' : ''}`}>
       {opts.map((o) => (
         <button key={o.v} role="radio" aria-checked={mode === o.v} onClick={() => onMode(o.v)}
-          className={`rounded-[7px] px-2 py-1.5 text-left text-[13px] font-semibold leading-tight transition ${mode === o.v ? 'bg-paper text-brand-600 shadow-sm' : 'text-ink-soft hover:text-ink'}`}>
+          className={`min-h-[36px] rounded-[7px] px-2 py-1.5 text-left text-[13px] font-semibold leading-tight transition ${mode === o.v ? 'bg-paper text-brand-600 shadow-sm' : 'text-ink-soft hover:text-ink'}`}>
           {o.label}
           {!compact && <span className="block text-[10.5px] font-normal text-ink-soft">{o.hint}</span>}
         </button>
@@ -106,7 +118,7 @@ export function Hero({ eyebrow, title, lead, children }: { eyebrow: string[]; ti
 
 export function Section({ id, eyebrow, title, intro, children }: { id: string; eyebrow: string; title: ReactNode; intro?: ReactNode; children: ReactNode }) {
   return (
-    <section id={id} className="scroll-mt-20 border-t border-rule pt-10">
+    <section id={id} className="scroll-mt-32 min-[960px]:scroll-mt-6 border-t border-rule pt-10">
       <div className="eyebrow mb-2">{eyebrow}</div>
       <h2 className="serif text-[30px] font-medium leading-tight tracking-[-0.01em] text-ink md:text-[36px]">{title}</h2>
       {intro && <p className="mt-3 max-w-3xl text-[17px] leading-relaxed text-ink-soft">{intro}</p>}

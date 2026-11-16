@@ -3,7 +3,7 @@
 // fetchWithRetry (timeout + exponential backoff with jitter on 429/5xx/network errors)
 // and an in-memory, promise-level session cache (concurrent callers share one request).
 
-import type { Biosample, GeneProfile, Modality } from '../data/presets';
+import { CURATED_EXTRAS, type Biosample, type GeneProfile, type Modality } from '../data/presets';
 
 // ───────────────────────── core transport ─────────────────────────
 
@@ -424,7 +424,10 @@ export function drugLikeness(c: ChemProps): DrugLikeness {
 
 export interface AdverseEvent { term: string; count: number }
 export async function faersTopEvents(drug: string, limit = 12): Promise<AdverseEvent[]> {
-  const url = `https://api.fda.gov/drug/event.json?search=${enc(`patient.drug.openfda.generic_name:"${drug.toLowerCase()}"`)}&count=patient.reaction.reactionmeddrapt.exact&limit=${limit}`;
+  // Many reports lack openfda harmonization (e.g. lenvatinib), so also match the active substance.
+  const d = drug.toLowerCase();
+  const q = `(patient.drug.activesubstance.activesubstancename:"${d}" patient.drug.openfda.generic_name:"${d}")`;
+  const url = `https://api.fda.gov/drug/event.json?search=${enc(q)}&count=patient.reaction.reactionmeddrapt.exact&limit=${limit}`;
   try {
     const j = await cachedJson<{ results: { term: string; count: number }[] }>(url, {}, { source: 'openFDA' });
     return j.results;
@@ -438,10 +441,10 @@ export async function faersTopEvents(drug: string, limit = 12): Promise<AdverseE
 
 export interface ChemblActivity { molecule: string; moleculeName: string | null; target: string; targetName: string; type: string; value: number | null; units: string; pchembl: number | null; assay: string; year: number | null }
 
-export async function chemblActivities(filter: { target?: string; molecule?: string }, limit = 25): Promise<ChemblActivity[]> {
+export async function chemblActivities(filter: { target?: string; molecules?: string[] }, limit = 25): Promise<ChemblActivity[]> {
   const p = new URLSearchParams({ format: 'json', limit: String(limit), pchembl_value__isnull: 'false', standard_type__in: 'IC50,Ki,Kd', order_by: '-pchembl_value' });
   if (filter.target) p.set('target_chembl_id', filter.target);
-  if (filter.molecule) p.set('molecule_chembl_id', filter.molecule);
+  if (filter.molecules?.length) p.set('molecule_chembl_id__in', [...new Set(filter.molecules)].join(','));
   type Raw = { activities: { molecule_chembl_id: string; molecule_pref_name: string | null; target_chembl_id: string; target_pref_name: string; standard_type: string; standard_value: string | null; standard_units: string; pchembl_value: string | null; assay_chembl_id: string; document_year: number | null }[] };
   const j = await cachedJson<Raw>(`https://www.ebi.ac.uk/chembl/api/data/activity.json?${p}`, {}, { source: 'ChEMBL', timeoutMs: 30000 });
   return j.activities.map((a) => ({
@@ -563,8 +566,10 @@ export async function resolveGene(symbolRaw: string): Promise<GeneProfile> {
     within(chemblTargetForUniprot(up.accession), 5000, null as string | null),
   ]);
   const loc = target?.location;
+  const extra = CURATED_EXTRAS[target?.symbol ?? symbol] as (typeof CURATED_EXTRAS)[string] | undefined;
   return {
     symbol: target?.symbol ?? symbol, name: target?.name ?? up.proteinName, ensemblId, uniprot: up.accession, pdbId: pdbs[0] ?? null, chemblTarget: chembl,
-    locus: loc ? `chr${loc.chromosome}:${loc.start}-${loc.end}` : null, hotspot: null, tfs: [], source: 'resolved',
+    locus: loc ? `chr${loc.chromosome}:${loc.start}-${loc.end}` : null, source: 'resolved',
+    hotspot: extra?.hotspot ?? null, tfs: extra?.tfs ?? [], alterationNote: extra?.alterationNote,
   };
 }

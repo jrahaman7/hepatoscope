@@ -113,7 +113,7 @@ export function S1Structure({ gene, subtype }: { gene: GeneProfile; subtype: Sub
   const hotspotResi = gene.hotspot?.residue ?? null;
 
   return (
-    <section id="s01" className="scroll-mt-28">
+    <section id="s01" className="scroll-mt-32 min-[960px]:scroll-mt-6">
       <SectionHeader n="01" title="3D Macromolecular Structure & Target Tractability" sources={['AlphaFold DB', 'RCSB PDB', 'UniProtKB', 'Open Targets']} />
       <div className="grid gap-4 lg:grid-cols-5">
         <Card className="lg:col-span-3" title={`${gene.symbol} · ${source === 'alphafold' ? `AlphaFold ${af.data ? `v${af.data.latestVersion}` : ''} model` : `PDB ${pdbId.data ?? '—'}`}`}

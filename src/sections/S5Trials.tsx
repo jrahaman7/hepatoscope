@@ -19,7 +19,7 @@ export function S5Trials({ gene, drug, subtype }: { gene: GeneProfile; drug: Dru
   const lit = useAsync(() => europePmc(litQuery, 15), [litQuery]);
 
   return (
-    <section id="s05" className="scroll-mt-28">
+    <section id="s05" className="scroll-mt-32 min-[960px]:scroll-mt-6">
       <SectionHeader n="05" title="ClinicalTrials.gov v2 · Europe PMC Literature" sources={['ClinicalTrials.gov API v2', 'Europe PMC REST']} />
       <div className="mb-3">
         <Segmented value={filter} onChange={setFilter} options={[

@@ -41,11 +41,11 @@ export function S2Genomics({ gene }: { gene: GeneProfile }) {
   const loeufTone = (v: number) => (v < 0.35 ? 'red' : v < 0.6 ? 'amber' : 'green');
 
   return (
-    <section id="s02" className="scroll-mt-28">
+    <section id="s02" className="scroll-mt-32 min-[960px]:scroll-mt-6">
       <SectionHeader n="02" title="Somatic & Germline Genomics · AlphaGenome Atlas · ClinVar" sources={['Ensembl', 'AlphaGenome Atlas', 'gnomAD v4', 'NCBI ClinVar']} />
       <div className="grid gap-4 lg:grid-cols-3">
         <Card title="Canonical driver hotspot" subtitle={`${gene.symbol} · ${gene.ensemblId}`}>
-          {!hs ? <Empty>{gene.symbol} has no single recurrent hotspot in liver cancer{gene.source === 'preset' ? ' (driven by amplification / overexpression).' : '. Use locus mode for the AlphaGenome Atlas.'}</Empty> : (
+          {!hs ? <Empty>{gene.alterationNote ?? `No curated hotspot for ${gene.symbol} in HepatoScope yet — check ClinVar below.`} Use locus mode for the AlphaGenome Atlas.</Empty> : (
             <div className="space-y-3">
               <div className="flex items-center gap-2">
                 <span className="font-mono text-2xl font-bold text-rose-600">{hs.label}</span>

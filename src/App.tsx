@@ -38,6 +38,7 @@ export default function App() {
   const [drug, setDrug] = useState<DrugPreset>(DRUG_PRESETS[0]);
   const [active, setActive] = useState('');
   const [geneStatus, setGeneStatus] = useState<{ loading?: string; error?: string }>({});
+  const [fromCase, setFromCase] = useState<UseCase | null>(null);
 
   const setMode = (m: Mode) => {
     setModeState(m);
@@ -65,6 +66,7 @@ export default function App() {
   }, [mode]);
 
   const openUseCase = (u: UseCase) => {
+    setFromCase(u);
     setSubtypeKey(u.subtype);
     const g = GENE_PRESETS.find((p) => p.symbol === u.gene);
     if (g) { setGene(g); setGeneStatus({}); }
@@ -86,7 +88,7 @@ export default function App() {
       ) : (
         <div className="space-y-14">
           <ClinicianHub subtype={subtypeKey} onSubtype={setSubtypeKey} onUseCase={openUseCase} />
-          <Workbench subtypeKey={subtypeKey} gene={gene} setGene={(g) => { setGene(g); setGeneStatus({}); }} drug={drug} setDrug={setDrug} status={geneStatus} />
+          <Workbench subtypeKey={subtypeKey} gene={gene} setGene={(g) => { setGene(g); setGeneStatus({}); setFromCase(null); }} drug={drug} setDrug={setDrug} status={geneStatus} fromCase={fromCase} onClearCase={() => setFromCase(null)} />
         </div>
       )}
       <footer className="mt-16 border-t border-rule pt-5 text-[12.5px] leading-relaxed text-ink-soft">
@@ -97,7 +99,7 @@ export default function App() {
   );
 }
 
-function Workbench({ subtypeKey, gene, setGene, drug, setDrug, status }: { subtypeKey: SubtypeKey; gene: GeneProfile; setGene: (g: GeneProfile) => void; drug: DrugPreset; setDrug: (d: DrugPreset) => void; status: { loading?: string; error?: string } }) {
+function Workbench({ subtypeKey, gene, setGene, drug, setDrug, status, fromCase, onClearCase }: { subtypeKey: SubtypeKey; gene: GeneProfile; setGene: (g: GeneProfile) => void; drug: DrugPreset; setDrug: (d: DrugPreset) => void; status: { loading?: string; error?: string }; fromCase: UseCase | null; onClearCase: () => void }) {
   const subtype = SUBTYPES.find((s) => s.key === subtypeKey)!;
   const [query, setQuery] = useState('');
   const [resolving, setResolving] = useState(false);
@@ -119,15 +121,28 @@ function Workbench({ subtypeKey, gene, setGene, drug, setDrug, status }: { subty
 
   return (
     <>
-      <section id="workbench" className="scroll-mt-20 border-t border-rule pt-10">
+      <section id="workbench" className="scroll-mt-32 min-[960px]:scroll-mt-6 border-t border-rule pt-10">
+        {fromCase && (
+          <div className="mb-5 rounded-xl border border-brand-500 bg-lavender-wash p-4">
+            <div className="flex flex-wrap items-start justify-between gap-2">
+              <div className="eyebrow !text-[10.5px]">Use case</div>
+              <div className="flex gap-2">
+                <a href={`#uc-${fromCase.id}`} className="text-[13.5px] font-semibold text-brand-600 hover:underline">← Back to use cases</a>
+                <button onClick={onClearCase} className="text-[13.5px] text-ink-soft hover:text-ink" aria-label="Dismiss use case">✕</button>
+              </div>
+            </div>
+            <p className="serif mt-1 text-[18px] font-medium text-ink">{fromCase.question}</p>
+            <ul className="mt-2 space-y-0.5 text-[13.5px] text-ink-soft">{fromCase.look.map((l) => <li key={l}>→ {l}</li>)}</ul>
+          </div>
+        )}
         <div className="eyebrow mb-2">Live workbench · {subtype.label}</div>
         <h2 className="serif text-[30px] font-medium leading-tight text-ink md:text-[36px]">Target <em className="text-brand-600">{gene.symbol}</em> — {gene.name}</h2>
-        <div className="sticky top-0 z-30 -mx-2 mt-4 rounded-xl border border-rule bg-paper/95 p-3 backdrop-blur lg:top-2">
+        <div className="relative z-30 -mx-2 mt-4 min-[960px]:sticky rounded-xl border border-rule bg-paper/95 p-3 backdrop-blur min-[960px]:top-2">
           <div className="flex flex-wrap items-center gap-1.5">
             <span className="eyebrow mr-1 !text-[10px]">Drivers</span>
             {GENE_PRESETS.map((g) => (
               <button key={g.symbol} onClick={() => setGene(g)}
-                className={`rounded-full border px-2.5 py-0.5 font-mono text-[12px] ${gene.symbol === g.symbol ? 'border-brand-500 bg-brand-500 text-white' : 'border-rule text-ink-soft hover:border-brand-500'}`}>{g.symbol}</button>
+                className={`min-h-[32px] rounded-full border px-3 font-mono text-[12.5px] ${gene.symbol === g.symbol ? 'border-brand-500 bg-brand-500 text-white' : 'border-rule text-ink-soft hover:border-brand-500'}`}>{g.symbol}</button>
             ))}
             <form onSubmit={onSubmit} className="ml-auto flex items-center gap-1">
               <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Any HGNC symbol (e.g. AXIN1)" aria-label="Resolve gene symbol"

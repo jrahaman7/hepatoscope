@@ -39,6 +39,7 @@ export interface GeneProfile {
   locus: string | null; // GRCh38 chrN:start-end
   hotspot: Hotspot | null;
   tfs: string[];
+  alterationNote?: string; // shown when there is no single hotspot (amplification, fusions…)
   source: 'preset' | 'resolved';
 }
 
@@ -67,7 +68,7 @@ export const GENE_PRESETS: GeneProfile[] = [
   {
     symbol: 'MET', name: 'MET proto-oncogene, receptor tyrosine kinase', ensemblId: 'ENSG00000105976', uniprot: 'P08581', pdbId: '2WGJ',
     chemblTarget: 'CHEMBL3717', locus: 'chr7:116672196-116798377',
-    hotspot: null, tfs: ['ETS1', 'SP1', 'HIF1A'], source: 'preset',
+    hotspot: null, tfs: ['ETS1', 'SP1', 'HIF1A'], alterationNote: 'In HCC, MET is mainly amplified or overexpressed rather than hit by one recurrent point mutation.', source: 'preset',
   },
   {
     symbol: 'VEGFA', name: 'Vascular endothelial growth factor A', ensemblId: 'ENSG00000112715', uniprot: 'P15692', pdbId: '2VPF',
@@ -93,7 +94,7 @@ export const GENE_PRESETS: GeneProfile[] = [
   {
     symbol: 'GPC3', name: 'Glypican 3', ensemblId: 'ENSG00000147257', uniprot: 'P51654', pdbId: null,
     chemblTarget: null, locus: 'chrX:133535745-133985594',
-    hotspot: null, tfs: ['ZBTB20', 'HNF1A', 'TCF7L2'], source: 'preset',
+    hotspot: null, tfs: ['ZBTB20', 'HNF1A', 'TCF7L2'], alterationNote: 'GPC3 is an overexpressed HCC biomarker (tumor antigen), not a mutation hotspot.', source: 'preset',
   },
 ];
 
@@ -119,3 +120,24 @@ export const BIOSAMPLES = ['HepG2', 'Liver', 'K562', 'GM12878'] as const;
 export const MODALITIES = ['RNA_SEQ', 'DNASE', 'CHIP_TF', 'ATAC', 'CAGE', 'SPLICE_JUNCTIONS'] as const;
 export type Biosample = (typeof BIOSAMPLES)[number];
 export type Modality = (typeof MODALITIES)[number];
+
+/** Curated annotations merged into live-resolved genes (beyond the 8 quick-try presets). */
+export const CURATED_EXTRAS: Record<string, Pick<GeneProfile, 'hotspot' | 'alterationNote' | 'tfs'>> = {
+  IDH1: {
+    hotspot: { label: 'R132C', kind: 'coding', residue: 132, hgvs: 'NM_005896.4:c.394C>T', vcf: null,
+      note: 'Recurrent gain-of-function hotspot in ~14–29% of iCCA; R132C is the most common change; target of ivosidenib.' },
+    tfs: [],
+  },
+  FGFR2: {
+    hotspot: null, tfs: [],
+    alterationNote: 'In iCCA, FGFR2 is activated by gene fusions/rearrangements (~9–13%), not a point hotspot. Fusions are best detected by RNA-based NGS; targets of pemigatinib and futibatinib.',
+  },
+  ERBB2: {
+    hotspot: null, tfs: [],
+    alterationNote: 'HER2 (ERBB2) amplification/overexpression (IHC 3+) occurs in ~1.6–4% of iCCA; targets of zanidatamab and trastuzumab deruxtecan.',
+  },
+  KDR: {
+    hotspot: null, tfs: [],
+    alterationNote: 'VEGFR2 (KDR) is a therapeutic target (ramucirumab when AFP ≥400 ng/mL), not a recurrently mutated driver in HCC.',
+  },
+};

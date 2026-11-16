@@ -23,9 +23,9 @@ export function S3Pharma({ gene, drug, onDrug }: { gene: GeneProfile; drug: Drug
   const faers = useAsync(() => faersTopEvents(drug.name, 12), [drug.name]);
   const targetChembl = useAsync(async () => (await chemblTargetForUniprot(gene.uniprot).catch(() => null)) ?? gene.chemblTarget, [gene.uniprot]);
   const acts = useAsync(
-    () => chemblActivities(actMode === 'drug' ? { molecule: chemblId.data! } : { target: targetChembl.data! }, 25),
+    () => chemblActivities(actMode === 'drug' ? { molecules: [drug.chemblId, chemblId.data ?? drug.chemblId] } : { target: targetChembl.data! }, 25),
     [actMode, chemblId.data, targetChembl.data],
-    actMode === 'drug' ? !!chemblId.data : !!targetChembl.data,
+    actMode === 'drug' ? !chemblId.loading : !!targetChembl.data,
   );
   const ot = useAsync(() => otTarget(gene.ensemblId), [gene.ensemblId]);
 
@@ -34,7 +34,7 @@ export function S3Pharma({ gene, drug, onDrug }: { gene: GeneProfile; drug: Drug
   const candidates = (ot.data?.knownDrugs ?? []).slice(0, 20);
 
   return (
-    <section id="s03" className="scroll-mt-28">
+    <section id="s03" className="scroll-mt-32 min-[960px]:scroll-mt-6">
       <SectionHeader n="03" title="Liver Cancer Pharmacology · ChEMBL · openFDA" sources={['PubChem PUG REST', 'openFDA FAERS', 'ChEMBL', 'Open Targets']} />
       <div className="mb-3 flex flex-wrap gap-2">
         {DRUG_PRESETS.map((d) => (
@@ -77,7 +77,7 @@ export function S3Pharma({ gene, drug, onDrug }: { gene: GeneProfile; drug: Drug
           )}
         </Card>
 
-        <Card title="openFDA FAERS · top reported adverse events" subtitle={`patient.drug.openfda.generic_name = "${drug.name.toLowerCase()}"`}>
+        <Card title="openFDA FAERS · top reported adverse events" subtitle={`Reports naming ${drug.name.toLowerCase()} as an active substance`}>
           {faers.loading ? <Loading /> : faers.error ? <ErrorBox error={faers.error} onRetry={faers.reload} /> : !faers.data?.length ? <Empty>No FAERS reports matched.</Empty> : (
             <div className="space-y-1">
               {faers.data.map((a) => (

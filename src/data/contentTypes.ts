@@ -36,12 +36,16 @@ export interface Persona {
   story: string;
   needs: string[];
   focus: string[]; // journey step ids most relevant
+  stage: StageGroup; // which treatment group to show first
 }
+
+export type StageGroup = 'all' | 'early' | 'liver' | 'advanced';
 
 export interface JourneyStep {
   id: string;
   title: string;
   plain: string;
+  plainBy?: Partial<Record<SubtypeKey, string>>; // subtype-specific wording overrides
   clinician: string;
   questions: string[];
   subtypes: SubtypeKey[];

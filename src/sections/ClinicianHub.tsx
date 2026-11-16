@@ -18,7 +18,7 @@ export function ClinicianHub({ subtype, onSubtype, onUseCase }: { subtype: Subty
 
   return (
     <div className="space-y-14">
-      <section id="overview" className="scroll-mt-20">
+      <section id="overview" className="scroll-mt-32 min-[960px]:scroll-mt-6">
         <Hero eyebrow={['Clinicians', 'Evidence', 'Live multi-omics']}
           title={<>From the <em className="text-brand-600">tumor board question</em> to the evidence and the molecule.</>}
           lead="Pivotal-trial outcomes with regulatory status, worked use cases, and a live workbench across 16 public data sources.">
@@ -38,10 +38,10 @@ export function ClinicianHub({ subtype, onSubtype, onUseCase }: { subtype: Subty
         <div className="mb-4 flex flex-wrap gap-1.5">
           {(['all', ...SETTINGS.filter((s) => present.has(s))] as const).map((s) => (
             <button key={s} onClick={() => setSetting(s)}
-              className={`rounded-full border px-3 py-1 text-[13px] ${setting === s ? 'border-brand-500 bg-brand-500 text-white' : 'border-rule bg-paper text-ink-soft hover:border-brand-500'}`}>{s === 'all' ? 'All settings' : s.replace('-', ' ')}</button>
+              className={`min-h-[36px] rounded-full border px-3 text-[13.5px] capitalize ${setting === s ? 'border-brand-500 bg-brand-500 text-white' : 'border-rule bg-paper text-ink-soft hover:border-brand-500'}`}>{s === 'all' ? 'All settings' : s.replace('-', ' ')}</button>
           ))}
         </div>
-        <div className="overflow-x-auto rounded-xl border border-rule bg-paper">
+        <div className="hidden overflow-x-auto rounded-xl border border-rule bg-paper md:block">
           <table className="w-full min-w-[880px] text-left text-[13.5px]">
             <thead className="border-b border-rule bg-paper-tint text-[11px] uppercase tracking-wider text-ink-soft">
               <tr><th className="px-3 py-2.5">Setting</th><th className="px-3">Regimen · trial</th><th className="px-3">Population</th><th className="px-3">Result</th><th className="px-3">Status</th><th className="px-3">Source</th></tr>
@@ -60,20 +60,34 @@ export function ClinicianHub({ subtype, onSubtype, onUseCase }: { subtype: Subty
             </tbody>
           </table>
         </div>
+        {/* Card layout for phones */}
+        <div className="space-y-3 md:hidden">
+          {rows.map((e) => (
+            <article key={e.id} className={`rounded-xl border border-rule p-4 ${e.status === 'not-proven' || e.status === 'withdrawn' ? 'bg-paper-tint' : 'bg-paper'}`}>
+              <div className="flex flex-wrap items-center gap-1.5"><Badge tone={STATUS[e.status].tone}>{STATUS[e.status].label}</Badge><span className="text-[12px] capitalize text-ink-soft">{e.setting.replace('-', ' ')}</span></div>
+              <h3 className="mt-1.5 text-[16px] font-semibold text-ink">{e.regimen}</h3>
+              <p className="text-[13px] text-ink-soft">{e.trial}{e.nct ? <> · <Ext href={`https://clinicaltrials.gov/study/${e.nct}`}>{e.nct}</Ext></> : null}</p>
+              <p className="mt-2 text-[13.5px] text-ink-soft"><b className="text-ink">Population:</b> {e.population}</p>
+              <p className="mt-1.5 rounded-md bg-paper-tint p-2 font-mono text-[12.5px] leading-relaxed text-ink">{e.result}</p>
+              {e.regulatory && <p className="mt-1.5 text-[12.5px] text-ink-soft">{e.regulatory}</p>}
+              <p className="mt-1.5 text-[12.5px]">{e.sources.map((x, i) => <span key={x.url}>{i ? ' · ' : ''}<Ext href={x.url}>{x.label}</Ext></span>)}</p>
+            </article>
+          ))}
+        </div>
       </Section>
 
       <Section id="use-cases" eyebrow="Worked clinical questions" title={<>Use cases that <em className="text-brand-600">open the workbench</em></>}
         intro="Each case sets the subtype, gene and drug, then takes you to the live data that answers it.">
         <div className="grid gap-4 lg:grid-cols-2">
           {USE_CASES.map((u) => (
-            <article key={u.id} className="flex flex-col rounded-xl border border-rule bg-paper p-5">
+            <article key={u.id} id={`uc-${u.id}`} className="flex scroll-mt-32 flex-col rounded-xl border border-rule bg-paper p-5 min-[960px]:scroll-mt-6">
               <div className="flex flex-wrap gap-1.5"><Badge tone="brand">{u.subtype}</Badge><Badge>{u.gene}</Badge>{u.drug && <Badge tone="blue">{u.drug}</Badge>}</div>
               <h3 className="serif mt-2 text-[20px] font-medium leading-snug text-ink">{u.question}</h3>
               <p className="mt-2 text-[14.5px] leading-relaxed text-ink-soft">{u.answer}</p>
               <ul className="mt-3 space-y-1 text-[13.5px] text-ink-soft">{u.look.map((l) => <li key={l}>→ {l}</li>)}</ul>
               <div className="mt-auto flex flex-wrap items-center justify-between gap-2 pt-4">
                 <span className="text-[12px]">{u.sources.map((s, i) => <span key={s.url}>{i ? ' · ' : ''}<Ext href={s.url}>{s.label}</Ext></span>)}</span>
-                <button onClick={() => onUseCase(u)} className="rounded-[7px] bg-brand-500 px-3.5 py-2 text-[14px] font-semibold text-white hover:bg-brand-700">Open in workbench →</button>
+                <button onClick={() => onUseCase(u)} className="min-h-[44px] rounded-[7px] bg-brand-500 px-4 text-[15px] font-semibold text-white hover:bg-brand-700">Open in workbench →</button>
               </div>
             </article>
           ))}

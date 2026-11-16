@@ -102,7 +102,7 @@ export function S4Network({ gene }: { gene: GeneProfile }) {
   useEffect(() => { if (selected) rowRefs.current[selected]?.scrollIntoView({ block: 'nearest', behavior: 'smooth' }); }, [selected]);
 
   return (
-    <section id="s04" className="scroll-mt-28">
+    <section id="s04" className="scroll-mt-32 min-[960px]:scroll-mt-6">
       <SectionHeader n="04" title="Reactome Pathway Graph · STRING PPI · GTEx v10" sources={['Reactome AnalysisService', 'STRING v12', 'GTEx Portal v2']} />
       <div className="grid gap-4 lg:grid-cols-5">
         <Card className="lg:col-span-3" title="ReactomeForceGraph · top 5 pathways (P1–P5) ↔ genes"
