@@ -2,11 +2,11 @@ import type { ReactNode } from 'react';
 
 export function Card({ title, subtitle, right, children, className = '' }: { title?: ReactNode; subtitle?: ReactNode; right?: ReactNode; children: ReactNode; className?: string }) {
   return (
-    <div className={`rounded-xl border border-slate-200 bg-white shadow-sm ${className}`}>
+    <div className={`rounded-xl border border-rule bg-paper ${className}`}>
       {(title || right) && (
         <div className="flex items-start justify-between gap-3 border-b border-slate-100 px-4 py-3">
           <div>
-            {title && <h3 className="text-sm font-semibold text-ink">{title}</h3>}
+            {title && <h3 className="serif text-[17px] font-medium text-ink">{title}</h3>}
             {subtitle && <p className="mt-0.5 text-xs text-slate-500">{subtitle}</p>}
           </div>
           {right}
@@ -21,8 +21,8 @@ export function SectionHeader({ n, title, sources }: { n: string; title: string;
   return (
     <div className="mb-4 flex flex-wrap items-end justify-between gap-2">
       <div className="flex items-baseline gap-3">
-        <span className="font-mono text-sm font-bold text-brand-600">{n}</span>
-        <h2 className="text-lg font-semibold text-ink">{title}</h2>
+        <span className="eyebrow">{n}</span>
+        <h2 className="serif text-2xl font-medium tracking-tight text-ink">{title}</h2>
       </div>
       <div className="flex flex-wrap gap-1">{sources.map((s) => <Badge key={s} tone="slate">{s}</Badge>)}</div>
     </div>
