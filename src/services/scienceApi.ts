@@ -453,12 +453,12 @@ export async function chemblActivities(filter: { target?: string; molecule?: str
 
 export async function chemblTargetForUniprot(acc: string): Promise<string | null> {
   const j = await cachedJson<{ targets: { target_chembl_id: string; target_type: string; organism: string }[] }>(
-    `https://www.ebi.ac.uk/chembl/api/data/target.json?format=json&target_components__accession=${enc(acc)}&target_type=SINGLE%20PROTEIN`, {}, { source: 'ChEMBL' });
+    `https://www.ebi.ac.uk/chembl/api/data/target.json?format=json&target_components__accession=${enc(acc)}&target_type=SINGLE%20PROTEIN`, {}, { source: 'ChEMBL', retries: 1, timeoutMs: 8000 });
   return j.targets.find((t) => t.organism === 'Homo sapiens')?.target_chembl_id ?? j.targets[0]?.target_chembl_id ?? null;
 }
 
 export async function chemblMoleculeByName(name: string): Promise<string | null> {
-  const j = await cachedJson<{ molecules: { molecule_chembl_id: string }[] }>(`https://www.ebi.ac.uk/chembl/api/data/molecule.json?format=json&pref_name__iexact=${enc(name)}`, {}, { source: 'ChEMBL' });
+  const j = await cachedJson<{ molecules: { molecule_chembl_id: string }[] }>(`https://www.ebi.ac.uk/chembl/api/data/molecule.json?format=json&pref_name__iexact=${enc(name)}`, {}, { source: 'ChEMBL', retries: 1, timeoutMs: 8000 });
   return j.molecules[0]?.molecule_chembl_id ?? null;
 }
 
