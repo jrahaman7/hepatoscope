@@ -550,13 +550,17 @@ export async function resolveGene(symbolRaw: string): Promise<GeneProfile> {
   const symbol = symbolRaw.trim().toUpperCase();
   if (!/^[A-Z0-9][A-Z0-9-]{0,19}$/.test(symbol)) throw new Error('Enter a valid HGNC symbol (e.g. AXIN1)');
   const [ot, up] = await Promise.all([otSearchTarget(symbol).catch(() => null), uniprotSearchGene(symbol)]);
+  // (OT search + UniProt are the only blocking lookups)
   if (!up) throw new ApiError('UniProtKB', `no reviewed human entry for ${symbol}`);
   const ensemblId = ot?.id ?? up.ensemblGene;
   if (!ensemblId) throw new ApiError('Open Targets', `no Ensembl gene for ${symbol}`);
+  // PDB and ChEMBL IDs are optional here (sections re-resolve them), so never let them block the resolver.
+  const within = <T,>(p: Promise<T>, ms: number, fallback: T) =>
+    Promise.race([p.catch(() => fallback), new Promise<T>((r) => setTimeout(() => r(fallback), ms))]);
   const [target, pdbs, chembl] = await Promise.all([
-    otTarget(ensemblId).catch(() => null),
-    rcsbSearchByUniprot(up.accession, 1).catch(() => []),
-    chemblTargetForUniprot(up.accession).catch(() => null),
+    within(otTarget(ensemblId), 12000, null),
+    within(rcsbSearchByUniprot(up.accession, 1), 5000, [] as string[]),
+    within(chemblTargetForUniprot(up.accession), 5000, null as string | null),
   ]);
   const loc = target?.location;
   return {
